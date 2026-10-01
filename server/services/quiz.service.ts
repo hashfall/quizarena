@@ -17,6 +17,13 @@ import { garantirQuizDeHoje } from './sorteio.service'
 
 export type CategoriaTons = 'cyan' | 'coral' | 'amber' | 'green' | 'blue'
 
+/**
+ * Quantos jogadores a lateral da frente exibe. A posição global de quem ficou
+ * fora do recorte não se perde: vem de `players.ranking`, que o Script Diário
+ * calcula sobre todos os jogadores, não sobre a lista da tela.
+ */
+const LIMITE_RANKING_FRENTE = 20
+
 export type TemaParaTela = {
   id: string
   titulo: string
@@ -75,7 +82,7 @@ export async function montarEstadoDaRodada(
 
   const [respostas, ranking, temas] = await Promise.all([
     listarRespostasDoDia(playerId, data),
-    listarRanking(50),
+    listarRanking(LIMITE_RANKING_FRENTE),
     listarTemas(6),
   ])
 
@@ -153,7 +160,7 @@ export async function pesquisarJogadores(termo: string, playerId: string): Promi
   jogador: PlayerPublico | null
 }> {
   const [resultados, player] = await Promise.all([
-    termo.trim() ? buscarPorNickname(termo.trim()) : listarRanking(50),
+    termo.trim() ? buscarPorNickname(termo.trim()) : listarRanking(LIMITE_RANKING_FRENTE),
     obterPlayer(playerId),
   ])
 
