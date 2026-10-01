@@ -1,0 +1,50 @@
+{
+  "name": "quiz-arena",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.15.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "lint": "tsc -b --pretty false && tsc -p tsconfig.server.json --noEmit",
+    "start": "tsx server/index.ts",
+    "preview": "NODE_ENV=production tsx server/index.ts",
+    "seed": "tsx server/scripts/seed.ts",
+    "script:dia": "tsx server/scripts/rodar-script-diario.ts",
+    "cron": "tsx server/scripts/cron.ts",
+    "reset:dia": "tsx scripts/reset-dia.ts",
+    "teste:texto": "tsx scripts/testar-texto.ts",
+    "teste:e2e": "tsx scripts/testar-e2e.ts",
+    "inspecionar": "tsx scripts/inspecionar-disciplina.ts",
+    "importar": "tsx scripts/importar-disciplinas.ts",
+    "validar:conteudo": "tsx scripts/validar-conteudo.ts"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.4",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.6.0",
+    "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.468.0",
+    "node-cron": "^4.2.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.23.15",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.5",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20"
+  }
+}

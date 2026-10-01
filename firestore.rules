@@ -1,0 +1,63 @@
+rules_version = '2';
+
+// Quiz Arena — regras do Firestore.
+//
+// Todo o acesso do jogo passa pelo backend Express, que usa o Firebase Admin SDK
+// e ignora estas regras. Elas existem para bloquear qualquer cliente que tente
+// ler o Firestore direto pelo SDK web: é essa regra que impede o jogador de
+// abrir o console e ver a alternativa correta, a senha de alguém ou o peso das
+// alternativas antes do fechamento do dia.
+//
+// Em produção, mantenha o banco bloqueado para o cliente.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function bloqueado() {
+      return false;
+    }
+
+    // Disciplinas, questões, alternativas, pesos, jogadores, respostas e
+    // sorteios ficam inacessíveis pelo cliente.
+    match /disciplinas/{disciplinaId} {
+      allow read, write: if bloqueado();
+
+      match /questoes/{questaoId} {
+        allow read, write: if bloqueado();
+
+        match /alternativas/{alternativaId} {
+          allow read, write: if bloqueado();
+
+          match /pontuacao/{dia} {
+            allow read, write: if bloqueado();
+          }
+        }
+      }
+    }
+
+    match /players/{playerId} {
+      allow read, write: if bloqueado();
+
+      match /respostas/{dia} {
+        allow read, write: if bloqueado();
+
+        match /itens/{questaoId} {
+          allow read, write: if bloqueado();
+        }
+      }
+    }
+
+    match /quiz_do_dia/{dia} {
+      allow read, write: if bloqueado();
+    }
+
+    match /temas/{temaId} {
+      allow read, write: if bloqueado();
+    }
+
+    // Qualquer coleção futura também nasce fechada.
+    match /{collection}/{document=**} {
+      allow read, write: if bloqueado();
+    }
+  }
+}
