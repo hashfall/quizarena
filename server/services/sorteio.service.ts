@@ -41,7 +41,7 @@ export async function sortearQuizDoDia(data = hojeISO()): Promise<ResultadoSorte
 
   const disciplinas = await listarDisciplinas()
   if (disciplinas.length === 0) {
-    throw new Error('Nenhuma disciplina ativa cadastrada. Rode o seed primeiro.')
+    throw new Error('Nenhuma disciplina ativa cadastrada no Firestore.')
   }
 
   const candidatas = await Promise.all(
@@ -62,7 +62,7 @@ export async function sortearQuizDoDia(data = hojeISO()): Promise<ResultadoSorte
     .map((item) => item.disciplina.nome)
 
   if (comQuestao.length === 0) {
-    throw new Error('Nenhuma disciplina possui questão ativa. Rode o seed primeiro.')
+    throw new Error('Nenhuma disciplina possui questão ativa no Firestore.')
   }
 
   // Uma questão por disciplina, embaralhado até completar o total do dia.
@@ -116,6 +116,9 @@ export async function sortearQuizDoDia(data = hojeISO()): Promise<ResultadoSorte
       disciplinaNome: item.disciplinaNome || questao.disciplinaNome,
       categoria: questao.categoria,
       enunciado: questao.enunciado,
+      // A pergunta pode vir partida entre `enunciado` e `destaque`; cortar o
+      // destaque aqui é o que faz a tela mostrar a pergunta incompleta.
+      destaque: questao.destaque,
     })
     await marcarQuestaoSelecionada(questao.disciplinaId, questao.id, true)
   }

@@ -30,6 +30,8 @@ export type QuestaoParaTela = {
   disciplinaNome: string
   categoria: string
   prompt: string
+  /** Trecho em destaque do `prompt`, renderizado separado no título. */
+  destaque: string
   questionNumber: number
   totalQuestions: number
   progressPercent: number
@@ -89,6 +91,7 @@ export async function montarEstadoDaRodada(
       disciplinaNome: questao.disciplinaNome,
       categoria: questao.categoria || questao.disciplinaNome,
       prompt: questao.enunciado,
+      destaque: questao.destaque,
       questionNumber: questao.ordem,
       totalQuestions: total,
       progressPercent: total === 0 ? 0 : Math.round((respondidasPorQuestao.size / total) * 100),

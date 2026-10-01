@@ -82,10 +82,26 @@ function useRodada(playerId: string | null) {
 /**
  * A pergunta é sempre uma pergunta aberta, então o título é o enunciado mais o
  * ponto de interrogação. Se o enunciado já vem interrogativo, não repetimos.
+ *
+ * Conteúdo antigo grava a pergunta partida entre `enunciado` e `destaque`
+ * (o trecho em destaque fecha a frase). Renderizar só o `enunciado` deixaria a
+ * pergunta cortada, então os dois são remontados aqui — com o destaque no
+ * `<span>` que o `.question-title span` pinta de ciano.
  */
-function montarTituloQuestao(enunciado: string): string {
-  const texto = enunciado.trim()
-  return texto.endsWith('?') ? texto : `${texto}?`
+function TituloQuestao({ enunciado, destaque }: { enunciado: string; destaque: string }) {
+  const base = enunciado.trim()
+  const trecho = destaque.trim()
+
+  const texto = base.endsWith('?') ? base : `${base}?`
+  const [corpo, fecho] = trecho ? [texto.slice(0, -1), texto.slice(-1)] : [texto, '']
+
+  return (
+    <h1 className="question-title">
+      {corpo}
+      {trecho ? <span> {trecho}</span> : ''}
+      {fecho}
+    </h1>
+  )
 }
 
 // -----------------------------------------------------------------------------
@@ -386,7 +402,7 @@ function QuestionCard({ questao, jogador, onResposta }: QuestionCardProps) {
         <p className="mt-6 text-center text-[12px] font-semibold uppercase tracking-[0.22em] text-slate-500">
           Pergunta {questao.questionNumber} de {questao.totalQuestions}
         </p>
-        <h1 className="question-title">{montarTituloQuestao(questao.prompt)}</h1>
+        <TituloQuestao enunciado={questao.prompt} destaque={questao.destaque} />
         <p className="question-helper">
           <CircleHelp size={15} />
           Escreva uma resposta curta. Várias respostas valem ponto, e a mais rara rende mais.

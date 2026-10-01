@@ -59,15 +59,14 @@ npm run lint                  # typecheck completo (faixa a rodar antes de commi
 npm run build                 # tsc -b && vite build -> dist/
 npm run dev                   # Vite em :6767 com a API como middleware (um processo só)
 npm start                     # tsx server/index.ts; serve dist/ + /api. Aborta se dist/ faltar
-npm run seed                  # grava conteúdo; recusa gravar se validarConteudo() falhar
-npm run validar:conteudo      # confere o seed sem tocar no Firestore
+npm run importar -- --simular   # plano de conteúdo, sem gravar nada
 npm run teste:texto           # word match; sem Firestore
 npm run teste:e2e             # precisa do servidor no ar E credencial Admin local
 npm run script:dia -- 2026-10-01   # fecha o dia anterior simulando a virada
 npm run inspecionar           # panorama de leitura do Firestore
 ```
 
-Argumentos exigem `--`: `npm run seed -- --limpar`, `npm run reset:dia -- --zerar-pontuacoes`.
+Argumentos exigem `--`: `npm run importar -- --aplicar`, `npm run reset:dia -- --zerar-pontuacoes`.
 
 Não existe segundo servidor: `createApiApp()` (`server/app.ts:19`) é montado como
 middleware do Vite em `vite.config.ts` e dentro de `server/index.ts`, que também
@@ -94,6 +93,12 @@ serve `dist/`. Um site, uma porta.
   e README/scripts usam npm. Use npm.
 - **`.env.example` não existe**, apesar de o README mandar copiá-lo. `.env` também não
   está no repo; tudo funciona sem ele em dev (ver `server/config.ts`).
+- **`quiz_do_dia/{dia}` é uma foto do conteúdo no momento do sorteio.** O doc guarda
+  `enunciado`, `categoria` e `disciplinaNome` copiados, não referências. Se o conteúdo
+  for trocado depois (import com `--apagar-minhas`, apagar disciplina), o doc do dia
+  continua apontando para o que não existe mais — e a invariável 9 impede o refazer
+  automático. Sumiu questão do banco depois do sorteio? Apague o `quiz_do_dia/{dia}`
+  e rode o sorteio de novo; não é bug do sorteio.
 - **`server/config.ts` faz `variaveis.parse(process.env)` no import.** Env inválido
   estoura no import do módulo, não na chamada da função. `JWT_SECRET` só é obrigatório
   com `NODE_ENV=production`; sem ele o dev usa um segredo efêmero (login reinicia a cada boot).
@@ -152,29 +157,53 @@ Quebrar qualquer um destes muda o jogo, não só o código:
    Elas reaparecem quando o mesmo nickname entra de novo, gerando um 409 que "não aconteceu".
    Daí `--apagar-jogadores` ser opt-in em `scripts/reset-dia.ts`.
 7. **Uma resposta por questão precisa ter alternativa**: o sorteio descarta questões sem
-   alternativa (`sorteio.service.ts`) e o seed exige ≥20 alternativas por questão.
-8. **`chaveDeAlternativa` deriva o id do documento do texto normalizado.** Duas alternativas
-   que só diferem em acento/caixa colidem — e o `seed` recusa por isso.
+   alternativa (`sorteio.service.ts`) e o importador descarta questão sem alternativa na
+   origem (`scripts/importar-disciplinas.ts`).
+8. **O id do documento de alternativa deriva do texto normalizado** (`chaveDe` em
+   `scripts/importar-disciplinas.ts`). Duas alternativas que só diferem em acento/caixa
+   colidem — o importador desambigua o slug e avisa no plano.
 9. `sortearQuizDoDia` é idempotente: se `quiz_do_dia/{dia}` já tem questões, não sorteia de novo
    (garante que todos vejam o mesmo quiz).
+10. **`destaque` é parte do enunciado, não enfeite.** Conteúdo grava a pergunta partida entre
+    `enunciado` (até o ponto) e `destaque` (o trecho que fecha a frase). Ele atravessa
+    `QuestaoDoDia` → payload → `<span>` do `.question-title` (que existe no `index.css`
+    justamente para pintá-lo de ciano). Cortar o `destaque` em qualquer elo mostra a pergunta
+    pela metade — foi o que aconteceu com o quiz de 2026-10-01.
 
 ### Dívida de conteúdo conhecida (não corrigida)
 
-`validarConteudo` só checa forma, nunca verdade. Estas alternativas existem no seed e estão
-erradas — cada uma faz o jogador ganhar ponto por resposta errada (ver invariante 1):
+Nenhuma ferramenta confere verdade de conteúdo — o importador normaliza e avisa, mas não sabe
+se a alternativa é mesmo uma resposta correta da pergunta. Estas alternativas **estão no
+Firestore** e estão erradas: cada uma faz o jogador ganhar ponto por resposta errada (ver
+invariante 1). Conferido em 2026-10-01:
 
-- `animal-mamifero`: `Galo`, `Pinguim` (aves), `Serpente`, `Jacaré`, `Tartaruga` (répteis).
-- `mes-em-ingles`: os 12 meses em português (`Janeiro`…`Dezembro`).
-- `civilizacao-antiga`: `Turcos`, `Judeus`, `Chineses`, `Indianos` (povos, não civilizações).
-- `lei-historica`: `Lei Antônio`, `Lei Eloi`, `Lei de Ancine`, `Lei de Curriculum`.
-- `cientista-fisico`: `Hendrik` (só o prenome). `cientista-biologo`: `Fleming e Penicilina`.
-- `figura-geometrica`: `Assoalhada`. `figura-de-linguagem`: `Metaplan`, `Meonímia`.
-- `tipo-de-grafico`: `Gráfico de compounded`.
-- Grafia: `Uranio` → Urânio, `Tropause` → Tropopause (as versões em português já foram
-  acrescentadas: `Urânio` não foi, o slug colide com a forma antiga).
-- `cientista-biologo` fragmenta um único Watson em **6 baldes de raridade**
+- `biologia/animal-mamifero`: `Galo`, `Pinguim` (aves), `Serpente`, `Jacaré`, `Tartaruga` (répteis).
+- `ingles/mes-em-ingles`: os 12 meses em português (`Janeiro`…`Dezembro`).
+- `historia/civilizacao-antiga`: `Turcos`, `Judeus`, `Chineses`, `Indianos` (povos, não civilizações).
+- `historia/lei-historica`: `Lei Antônio`, `Lei Eloi`, `Lei de Ancine`, `Lei de Curriculum`.
+- `fisica/cientista-fisico`: `Hendrik` (só o prenome).
+- `biologia/cientista-biologo`: `Fleming e Penicilina`.
+- `matematica/figura-geometrica`: `Assoalhada`. `portugues/figura-de-linguagem`: `Metaplan`, `Meonímia`.
+- `matematica/tipo-de-grafico`: `Gráfico de compounded`.
+- Grafia: `Uranio` → Urânio (`quimica/elemento-quimico`).
+- `biologia/cientista-biologo` fragmenta um único Watson em **6 baldes de raridade**
   (`Watson`, `Watson e Crick`, `J Watson`, `J. D. Watson`, `James Watson`, `James Dewey Watson`):
   a mesma pessoa pontua em seis potes diferentes conforme a grafia.
+
+Nas 4 disciplinas criadas em 2026-10-01 (geografia, educação física, filosofia, sociologia) não
+há caso egregious, mas há itens de fronteira que valem revisão humana:
+
+- `geografia/rio-brasil`: `Rio Grande` e `Rio Uruguay` existem em mais de um estado — o nome
+  sozinho é ambíguo sobre qual.
+- `geografia/bioma-brasil`: as subdivisões (`Caatinga xerófita`, `Cerrado lato sensu`,
+  `Complexo do Pantanal`) dependem da classificação adotada; um professor pode chamar outra.
+- `educacao-fisica/exercicio-condicionamento`: `Mobilidade` é categoria genérica, não exercício.
+- `filosofia/corrente-filosofica`: `Panteísmo` é doutrina, e `Aparência`/`Fenômeno` (em
+  `conceito-filosofico`) são categorias genéricas em vez de conceito nomeado.
+- `sociologia/movimento-social`: `Colonato` e `Cangaço` são manifestações regionais, não
+  organizações com nome.
+- `sociologia/metodo-pesquisa`: `Jogo de linguagem` é conceito de Wittgenstein usado como técnica.
+
 
 ## Convenções
 
@@ -185,9 +214,10 @@ erradas — cada uma faz o jogador ganhar ponto por resposta errada (ver invaria
 - Front mistura utilitários Tailwind no JSX com ~945 linhas de classes estruturais em
   `src/index.css` (`.app-shell`, `.panel`, `.question-shell`, `.primary-button`...).
   Primitiva de layout nova tende a ir para o `index.css`, não para `@layer components`.
-- Ao mexer em `server/scripts/dados-do-seed.ts`, rode `npm run validar:conteudo` antes de
-  `seed`: as regras (8 disciplinas, ≥5 questões, ≥20 alternativas, sem duplicata normalizada,
-  charset) são bloqueantes.
+- **Não há conteúdo no repositório.** Disciplina, questão e alternativa vivem só no
+  Firestore; o código não tem lista de conteúdo e nenhum comando cria dado inicial.
+  `npm run importar -- --simular` é a forma de mexer em conteúdo — e ele só grava com
+  `--aplicar`. Não reintroduza um seed: ele sobrescreve produção.
 - `npm run teste:e2e` **escreve no projeto Firestore real** com jogadores `e2e_*` e faz
   `execFileSync('npx', ['tsx', 'scripts/reset-dia.ts', ...])`. Limpeza:
   `npm run reset:dia -- --zerar-pontuacoes` e `--apagar-jogadores e2e_`.

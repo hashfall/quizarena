@@ -10,15 +10,13 @@
     "lint": "tsc -b --pretty false && tsc -p tsconfig.server.json --noEmit",
     "start": "tsx server/index.ts",
     "preview": "NODE_ENV=production tsx server/index.ts",
-    "seed": "tsx server/scripts/seed.ts",
     "script:dia": "tsx server/scripts/rodar-script-diario.ts",
     "cron": "tsx server/scripts/cron.ts",
     "reset:dia": "tsx scripts/reset-dia.ts",
     "teste:texto": "tsx scripts/testar-texto.ts",
     "teste:e2e": "tsx scripts/testar-e2e.ts",
     "inspecionar": "tsx scripts/inspecionar-disciplina.ts",
-    "importar": "tsx scripts/importar-disciplinas.ts",
-    "validar:conteudo": "tsx scripts/validar-conteudo.ts"
+    "importar": "tsx scripts/importar-disciplinas.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.4",

@@ -10,9 +10,12 @@ projeto e sob o mesmo domínio**: um único site, uma única porta.
 
 ```bash
 npm install
-npm run seed      # cria disciplinas, questões, alternativas e temas
 npm run dev       # site + API em http://localhost:6767
 ```
+
+O conteúdo do quiz vem **do Firestore**. Este repositório não popula o banco:
+`npm run seed` não existe, e não há mais arquivo de conteúdo no código. Para
+cadastrar conteúdo novo, use o importador (ver [Conteúdo](#conteúdo)).
 
 O `npm run dev` sobe o Vite e, no mesmo processo, monta a API como middleware.
 Não existe segundo servidor para subir.
@@ -149,26 +152,41 @@ Todas exigem `Authorization: Bearer <token>`, exceto `/auth/entrar` e
 
 ## Conteúdo
 
-`npm run seed` grava as disciplinas do arquivo `server/scripts/dados-do-seed.ts`:
-Artes, Biologia, Física, História, Inglês, Matemática, Português e Química, com 5
-questões cada e 20 ou mais formas aceitas de resposta por questão (mais de mil
-alternativas no total).
+O conteúdo vive no Firestore e **não tem cópia no repositório**: não existe
+seed, e o backend nunca grava disciplina, questão ou alternativa em fluxo normal.
+O que o servidor faz é só ler, sortear e pontuar.
 
-`npm run validar:conteudo` confere o arquivo antes de qualquer gravação, e o
-próprio seed se recusa a gravar se algo estiver errado. As regras:
+Para cadastrar ou trocar o conteúdo, o importador lê de outra coleção do
+Firestore ou de um JSON exportado do console, normaliza para o formato do Quiz
+Arena e grava. Por padrão ele só mostra o plano — nada é gravado sem
+`--aplicar`:
 
-- as 8 disciplinas, com pelo menos 5 questões cada;
-- pelo menos 20 alternativas por questão, todas válidas;
-- nenhuma alternativa repetida — depois de normalizar, duplicar é inútil, porque
-  o *word match* acharia sempre a primeira;
-- nada de caractere estranho, letra de outro alfabeto ou texto duplicado.
+```bash
+npm run importar -- --simular                            # só imprime o plano
+npm run importar -- --fonte Disciplina --apagar-minhas    # planeja a troca
+npm run importar -- --fonte Disciplina --apagar-minhas --aplicar
+npm run importar -- --arquivo exportacao.json --aplicar
+```
 
-`--limpar` remove também o que ficou no banco e não existe mais no arquivo.
+O importador adota as regras de cobertura do jogo, porque elas valem para
+qualquer origem de conteúdo:
+
+- questão sem alternativa alguma é **descartada** (ninguém teria o que casar);
+- alternativa sem flag `correta` faz a primeira ser tratada como correta, com
+  aviso no plano;
+- o id do documento de alternativa é derivado do texto normalizado, então duas
+  formas que só diferem em acento ou caixa colidem — o importador desambigua o
+  slug e avisa.
+
+Inspecionar o que está no banco:
+
+```bash
+npm run inspecionar
+```
 
 ## Testes e utilitários
 
 ```bash
-npm run validar:conteudo  # confere o seed sem gravar
 npm run teste:texto        # word match, acentos, pontuação (não toca no Firestore)
 npm run teste:e2e          # ciclo completo contra o servidor em execução
 npm run reset:dia          # zera as respostas de hoje e sorteia de novo

@@ -20,7 +20,7 @@ import { COLECAO_DISCIPLINAS, SUBCOLECAO_ALTERNATIVAS, SUBCOLECAO_QUESTOES } fro
 import { normalizar } from '../server/lib/texto'
 
 // ---------------------------------------------------------------------------
-// Tipo canônico de destino (o mesmo que o seed usa)
+// Tipo canônico de destino (o mesmo que o repositório lê)
 // ---------------------------------------------------------------------------
 
 type AlternativaDestino = { slug: string; texto: string; correta: boolean }

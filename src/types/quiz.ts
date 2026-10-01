@@ -34,6 +34,8 @@ export type CurrentQuestion = {
   disciplinaNome: string
   categoria: string
   prompt: string
+  /** Trecho em destaque do `prompt`, renderizado separado no título. */
+  destaque: string
   questionNumber: number
   totalQuestions: number
   progressPercent: number

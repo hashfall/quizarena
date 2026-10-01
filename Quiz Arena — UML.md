@@ -88,8 +88,7 @@ rectangle "Backend Vite — Script Diário" {
 }
 
 rectangle "Operação" {
-  usecase "UC12 Gravar conteúdo (seed)" as UC12
-  usecase "UC13 Validar conteúdo" as UC13
+  usecase "UC12 Importar conteúdo" as UC12
   usecase "UC14 Reiniciar o dia" as UC14
   usecase "UC15 Diagnóstico do servidor" as UC15
 }
@@ -110,8 +109,6 @@ UC4 ..> UC9 : <<include>> versão filtrada
 Cron --> UC11
 Operador --> UC11 : simula a virada
 Operador --> UC12
-Operador --> UC13
-UC12 ..> UC13 : <<include>> recusa gravar se falhar
 Operador --> UC14
 Operador --> UC15
 
@@ -156,7 +153,7 @@ title Quiz Arena — Modelo de domínio (documentos do Firestore)
 skinparam classAttributeIconSize 0
 skinparam shadowing false
 
-package "disciplinas/ (conteúdo, gravado pelo seed)" {
+package "disciplinas/ (conteúdo, cadastrado fora do repo)" {
   class Disciplina {
     +id: string <<chave=slug>>
     +nome: string
@@ -179,7 +176,7 @@ package "disciplinas/ (conteúdo, gravado pelo seed)" {
   }
 
   class Alternativa <<forma aceita>> {
-    +id: string <<chave=chaveDeAlternativa>>
+    +id: string <<chave=chaveDe(texto normalizado)>>
     +texto: string
     +ordem: number
   }
@@ -313,7 +310,7 @@ end note
 | 5 | **Uma** resposta por questão por dia (`409`) | Diagrama 7 |
 | 6 | Apagar `players/{id}` deixa respostas órfãs | Nota em `Player` |
 | 7 | Questão sem alternativa é **injogável** e sai do sorteio | `Alternativa` 1..* |
-| 8 | `chaveDeAlternativa` deriva o id do texto normalizado; colisão é erro de seed | Nota em `Alternativa.id` |
+| 8 | `chaveDe` deriva o id do texto normalizado; colisão de slug é desambiguada no import | Nota em `Alternativa.id` |
 | 9 | `sortearQuizDoDia` é idempotente | `QuizDoDia` (diagrama 9) |
 
 ---
@@ -447,7 +444,6 @@ package "server/lib/ e infraestrutura" {
     +casarPorWord(resposta, alternativa): ResultadoMatch
     +higienizarResposta(texto): string
     +chaveDeNickname(nick): string
-    +chaveDeAlternativa(texto): string
     +iniciaisDoNickname(nick): string
   }
   class DatasLib <<lib>> {
@@ -1504,7 +1500,7 @@ package "Firebase" {
 
 package "Fora do sistema" {
   [Agendador externo\n(curl / Cloud Scheduler)] as EXT
-  [Operador\nnpm run seed / reset:dia] as OPS
+  [Operador\nnpm run importar / reset:dia] as OPS
 }
 
 SPA --> CLIENT : fetch /api/...
@@ -1574,7 +1570,7 @@ node "Processo dedicado\nnpm run cron" as CRONPROC {
 }
 
 node "Máquina do operador" as OPS {
-  artifact "tsx\nseed, script:dia,\nreset:dia, testes" as CLI
+  artifact "tsx\nimportar, script:dia,\nreset:dia, testes" as CLI
 }
 
 node "nginx / balanceador" as LB {

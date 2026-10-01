@@ -21,6 +21,12 @@ export type QuestaoDoDia = {
   disciplinaNome: string
   categoria: string
   enunciado: string
+  /**
+   * Trecho em destaque do enunciado. Conteúdo mais antigo gravava a pergunta
+   * partida: o `enunciado` ia até o ponto e o termo que fecha a frase vivia
+   * aqui. Sem copiar os dois, a tela mostra a pergunta cortada.
+   */
+  destaque: string
 }
 
 export type QuizDoDia = {
@@ -43,12 +49,34 @@ export async function obterQuizDoDia(data: string): Promise<QuizDoDia | null> {
   if (!doc.exists) return null
 
   const dados = doc.data()!
+  const questoes = mapearQuestoes(dados.questoes)
   return {
     data,
-    total: dados.total ?? (dados.questoes?.length ?? 0),
-    questoes: (dados.questoes ?? []) as QuestaoDoDia[],
+    total: dados.total ?? questoes.length,
+    questoes,
     geradoEm: dados.geradoEm instanceof Date ? dados.geradoEm : null,
   }
+}
+
+/**
+ * Normaliza o array embutido. `destaque` é opcional na origem porque documento
+ * antigo foi gravado sem ele, e `dados.total` pode faltar.
+ */
+function mapearQuestoes(brutas: unknown): QuestaoDoDia[] {
+  if (!Array.isArray(brutas)) return []
+
+  return brutas.map((bruto, indice) => {
+    const item = (bruto ?? {}) as Partial<QuestaoDoDia>
+    return {
+      ordem: item.ordem ?? indice + 1,
+      questaoId: item.questaoId ?? '',
+      disciplinaId: item.disciplinaId ?? '',
+      disciplinaNome: item.disciplinaNome ?? '',
+      categoria: item.categoria ?? '',
+      enunciado: item.enunciado ?? '',
+      destaque: item.destaque ?? '',
+    }
+  })
 }
 
 /** Cria o sorteio do dia se ainda não existir; devolve sempre o documento válido. */
@@ -61,10 +89,11 @@ export async function garantirQuizDoDia(
 
   if (existente.exists) {
     const dados = existente.data()!
+    const jaGravadas = mapearQuestoes(dados.questoes)
     return {
       data,
-      total: dados.total ?? 0,
-      questoes: (dados.questoes ?? []) as QuestaoDoDia[],
+      total: dados.total ?? jaGravadas.length,
+      questoes: jaGravadas,
       geradoEm: dados.geradoEm instanceof Date ? dados.geradoEm : null,
     }
   }

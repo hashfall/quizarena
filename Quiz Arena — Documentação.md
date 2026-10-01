@@ -48,7 +48,7 @@ todas valem ponto. Quem escreve a forma que **menos gente** usou fica no topo do
 >    resposta única"*. Não existe gabarito escondido para comparar.
 > 2. **Uma alternativa que não é resposta correta da pergunta faz o jogador ganhar ponto
 >    errado.** Não há como o sistema detectar isso: ele não sabe a verdade, só conhece a
->    lista que o seed gravou.
+>    lista que o administrador cadastrou.
 
 A segunda consequência é a origem de praticamente todo o problema de conteúdo do projeto,
 descrito na seção 14.
@@ -119,7 +119,7 @@ Raiz do projeto: nome do projeto definido na credencial (ver §12). Todas as col
 primeiro nível:
 
 ```
-disciplinas/      conteúdo do quiz (seed)
+disciplinas/      conteúdo do quiz (cadastrado fora do repo)
 players/          jogadores e suas respostas
 quiz_do_dia/      sorteio de cada dia
 temas/            tema exibido na lateral
@@ -191,8 +191,9 @@ pessoa por construção.
 
 ### 5.3 Slug da alternativa
 
-`chaveDeAlternativa(texto)` deriva o id do documento do **texto normalizado**:
-`normalizar(texto)`, espaços viram `-`, fora de `[a-z0-9-]` removido.
+`chaveDe(texto)` em `scripts/importar-disciplinas.ts` deriva o id do documento do **texto
+normalizado**: `normalizar(texto)`, espaços viram `-`, fora de `[a-z0-9-]` removido,
+`-` repetido colapsado e pontas removidas.
 
 ```text
 "Mona Lisa"  ->  mona-lisa
@@ -200,10 +201,9 @@ pessoa por construção.
 ```
 
 > [!danger] Duas alternativas que só diferem em acento ou caixa colidem
-> `Mona Lisa` e `Mona Lisa` (diferentes só no acento) produzem o mesmo id. Por isso
-> `validarConteudo` **rejeita** forma normalizada duplicada na mesma questão, e o seed
-> se recusa a gravar. Isso também impede "corrigir" `Uranio` → `Urânio` sem remover o
-> documento antigo: os slugs são idênticos.
+> `Mona Lisa` e `Mona Lisa` (diferentes só no acento) produzem o mesmo id, então uma
+> sobrescreve a outra. O importador desambigua o slug e **avisa no plano**; corrigir
+> direto no console precisa apagar o documento antigo, porque os slugs são idênticos.
 
 ### 5.4 O documento `respostas/{dia}` intermediário
 
@@ -531,34 +531,35 @@ src/
 
 ---
 
-## 14. Conteúdo (seed)
+## 14. Conteúdo
 
-`server/scripts/dados-do-seed.ts` é a fonte do conteúdo: **8 disciplinas, 40 questões,
-1.275 alternativas**.
+**O conteúdo não tem cópia no repositório.** Não existe seed: disciplina, questão e
+alternativa vivem só no Firestore, e nenhum comando do backend cria dado inicial.
+`npm run importar` é a única forma de gravar conteúdo, e ele lê de outra coleção ou de
+um JSON exportado do console.
 
-| Disciplina | Questões |
-| --- | --- |
-| Artes, Biologia, Física, História, Inglês, Matemática, Português, Química | 5 cada |
+### 14.1 O que o importador garante
 
-### 14.1 Regras bloqueantes
+`npm run importar -- --simular` imprime o plano sem gravar; `--aplicar` grava. Na
+normalização ele adota as regras que o jogo exige:
 
-`npm run validar:conteudo` roda as mesmas regras que o `seed` executa antes de gravar —
-o seed **se recusa a escrever** conteúdo inconsistente:
-
-- as 8 disciplinas esperadas, sem extras;
-- ≥5 questões por disciplina, ≥20 alternativas por questão;
-- **nenhuma forma normalizada duplicada** na mesma questão;
-- charset permitido, sem letra de outro alfabeto, sem espaço duplicado ou nas pontas.
+- questão sem nenhuma alternativa é **descartada** (o *word match* não teria contra o
+  que casar);
+- alternativa sem flag `correta` → a primeira é tratada como correta, com aviso;
+- id de alternativa derivado do texto normalizado; colisão de slug é desambiguada e
+  avisada;
+- texto vazio ou só pontuação é rejeitado.
 
 > [!important] Cobertura é o que define se o jogo é justo
 > Como o match exige precisão 1 (§10.2), uma pergunta com 20 alternativas incompletas
 > recusa respostas corretas. Apelidos e sobrenomes isolados são **obrigatórios**:
-> `Lula` não casa com `Luiz Inácio Lula da Silva`.
+> `Lula` não casa com `Luiz Inácio Lula da Silva`. Nenhuma ferramenta confere isso:
+> é revisão humana.
 
 ### 14.2 Dívida de conteúdo conhecida
 
-`validarConteudo` confere **forma**, nunca **verdade**. Estas alternativas existem no
-seed e estão erradas — cada uma faz o jogador ganhar ponto por resposta errada (§2):
+Nenhuma ferramenta confere **verdade**. Estas alternativas **estão no Firestore** e estão
+erradas — cada uma faz o jogador ganhar ponto por resposta errada (§2):
 
 | Questão | Problema |
 | --- | --- |
@@ -571,7 +572,7 @@ seed e estão erradas — cada uma faz o jogador ganhar ponto por resposta errad
 | `figura-geometrica` | `Assoalhada` |
 | `figura-de-linguagem` | `Metaplan`, `Meonímia` |
 | `tipo-de-grafico` | `Gráfico de compounded` (linguagem misturada) |
-| Grafia | `Uranio` (sem acento), `Tropause` |
+| Grafia | `Uranio` → Urânio (`elemento-quimico`) |
 
 > [!tip] Fragmentação de balde de raridade
 > `cientista-biologo` tem **6 alternativas para um único Watson** (`Watson`,
@@ -579,12 +580,19 @@ seed e estão erradas — cada uma faz o jogador ganhar ponto por resposta errad
 > A mesma pessoa pontua em seis potes conforme a grafia — o efeito colateral de adicionar
 > cobertura sem critério.
 
-### 14.3 Idempotência do seed
+### 14.3 Idempotência da importação
 
-Documentos usam slug como id e usam `merge`. O que saiu do arquivo **continua no banco**
-e continua sendo sorteado até você rodar com `--limpar`. Como apagar o documento do
-pai não apaga subcoleções, o `--limpar` limpa `alternativas` e `questoes` antes de
-remover o pai.
+Documentos usam slug como id e `merge`, então reimportar atualiza em vez de duplicar.
+O que saiu da origem **continua no banco** e continua sendo sorteado até você pedir a
+troca com `--apagar-minhas`. Como apagar o documento do pai não apaga subcoleções, o
+`--apagar-minhas` limpa `alternativas` e `pontuacao` antes de remover `questoes`, e as
+questões antes de remover a disciplina.
+
+> [!warning] `quiz_do_dia/{dia}` é uma foto, não uma referência
+> O doc do dia copia `enunciado`, `categoria` e `disciplinaNome`. Trocar o conteúdo
+> depois do sorteio deixa o doc do dia apontando para o que não existe mais, e a
+> idempotência do sorteio (§11) impede o refazer automático. Nesse caso, apague o
+> `quiz_do_dia/{dia}` e rode o sorteio de novo.
 
 ---
 
@@ -597,9 +605,8 @@ npm run dev                 # Vite em :6767 com a API como middleware
 npm start                   # Express servindo dist/ + /api (exige dist/)
 npm run preview             # o mesmo, com NODE_ENV=production
 
-npm run seed                # grava conteúdo (recusa se validarConteudo falhar)
-npm run seed -- --limpar    # e remove o que não existe mais no arquivo
-npm run validar:conteudo    # confere o seed sem tocar no Firestore
+npm run importar -- --simular    # plano de conteúdo; não grava nada
+npm run importar -- --aplicar    # grava (veja §14)
 
 npm run teste:texto         # word match puro, sem Firestore
 npm run teste:e2e           # ciclo completo; PRECISA do servidor no ar
@@ -609,11 +616,10 @@ npm run script:dia -- 2026-10-01
 npm run cron                # processo dedicado só ao agendamento
 npm run reset:dia           # zera respostas de hoje e sorteia de novo
 npm run inspecionar         # panorama de leitura do Firestore
-npm run importar            # importa disciplinas de outra coleção/JSON
 ```
 
 > [!warning] Argumentos exigem `--`
-> `npm run seed -- --limpar`. Sem o separador, o npm come o argumento.
+> `npm run importar -- --aplicar`. Sem o separador, o npm come o argumento.
 
 > [!danger] `npm run teste:e2e` escreve no Firestore de verdade
 > Cria jogadores `e2e_*` e executa `reset-dia.ts` via `execFileSync`. Precisa do
@@ -775,7 +781,7 @@ server/
 │   ├── auth.service.ts        entrarOuCriar(), sessaoAtual()
 │   ├── quiz.service.ts        montarEstadoDaRodada(), pesquisarJogadores()
 │   └── script-diario.service.ts   orquestra os 3 passos na ordem
-└── scripts/                   seed, cron, rodar-script-diario, dados-do-seed
+└── scripts/                   cron, rodar-script-diario
 
 scripts/                       inspecionar, reset-dia, importar, testar-texto, testar-e2e,
                                validar-conteudo
