@@ -526,6 +526,21 @@ button {
   background: #2b2413;
 }
 
+/* Dica de atalho ao lado do botão de envio. */
+.kbd-hint {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid #2a4666;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: #08172a;
+  color: #cbd5e1;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
 .answer-wrap textarea {
   display: block;
   box-sizing: border-box;

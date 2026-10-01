@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, KeyboardEvent } from 'react'
 import {
   ArrowRight,
   Award,
@@ -352,8 +352,7 @@ function QuestionCard({ questao, jogador, onResposta }: QuestionCardProps) {
   // de habilitar o botão e tomar um 422.
   const podeEnviar = /[\p{L}\p{N}]/u.test(respostaTexto) && status === 'idle'
 
-  async function handleRespostaSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function enviar() {
     if (!podeEnviar) return
 
     setStatus('sending')
@@ -374,6 +373,24 @@ function QuestionCard({ questao, jogador, onResposta }: QuestionCardProps) {
       )
       setStatus('idle')
     }
+  }
+
+  function handleRespostaSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    void enviar()
+  }
+
+  /**
+   * Enter envia, Shift+Enter quebra linha. A resposta é curta e o envio é o
+   * caminho principal, mas a quebra de linha continua acessível — e continua
+   * inofensiva, porque o *word match* normaliza quebra em espaço.
+   */
+  function handleTeclaResposta(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== 'Enter' || event.shiftKey) return
+    // Digitação por composição (IME): o Enter está confirmando o caractere.
+    if (event.nativeEvent.isComposing) return
+    event.preventDefault()
+    void enviar()
   }
 
   return (
@@ -419,6 +436,7 @@ function QuestionCard({ questao, jogador, onResposta }: QuestionCardProps) {
               id="answer"
               value={respostaTexto}
               onChange={(event) => setRespostaTexto(event.target.value)}
+              onKeyDown={handleTeclaResposta}
               disabled={status !== 'idle'}
               maxLength={120}
               placeholder="Escreva sua resposta aqui..."
@@ -461,17 +479,24 @@ function QuestionCard({ questao, jogador, onResposta }: QuestionCardProps) {
                 : 'Uma resposta por pergunta.'}
             </p>
 
-            <button
-              type="submit"
-              disabled={!podeEnviar}
-              className="primary-button shrink-0"
-            >
-              {status === 'sending' ? (
-                <><span className="spinner" /> Checando...</>
-              ) : (
-                <>Enviar resposta <ArrowRight size={16} /></>
+            <div className="flex shrink-0 items-center gap-3">
+              {status === 'idle' && (
+                <span className="hidden text-[11px] text-slate-500 sm:inline">
+                  <kbd className="kbd-hint">Enter</kbd> envia
+                </span>
               )}
-            </button>
+              <button
+                type="submit"
+                disabled={!podeEnviar}
+                className="primary-button shrink-0"
+              >
+                {status === 'sending' ? (
+                  <><span className="spinner" /> Checando...</>
+                ) : (
+                  <>Enviar resposta <ArrowRight size={16} /></>
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>
