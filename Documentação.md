@@ -1,12 +1,12 @@
 ---
-title: Quiz Arena — Documentação Técnica
+title: Documentação Técnica
 tags: [quiz-arena, documentacao, firestore, api, deploy]
 status: vivo
 criado: 2026-09-30
 atualizado: 2026-09-30
 ---
 
-# Quiz Arena — Documentação Técnica
+# Documentação Técnica
 
 > [!important] Esta documentação
 > Cobre arquitetura, modelo de dados completo no Firestore, API, motor de pontuação e
